@@ -29,40 +29,66 @@ class CalculatorGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Calculator")
+        self.current = ""
+        self.first_operand = None
+        self.operation = None
+        self.display_var = tk.StringVar(value="0")
         self._build_widgets()
 
     def _build_widgets(self):
-        self.entry_a = ttk.Entry(self.root, width=10)
-        self.entry_a.grid(row=0, column=0, padx=5, pady=5)
-
-        ttk.Label(self.root, text="op").grid(row=0, column=1, padx=5)
-        self.entry_b = ttk.Entry(self.root, width=10)
-        self.entry_b.grid(row=0, column=2, padx=5, pady=5)
-
-        self.op_var = tk.StringVar(value='add')
-        for i, op in enumerate(OPERATIONS.keys()):
-            ttk.Radiobutton(self.root, text=op, variable=self.op_var, value=op).grid(
-                row=1, column=i, padx=5
-            )
-
-        ttk.Button(self.root, text="Calculate", command=self.on_calculate).grid(
-            row=2, column=0, columnspan=4, pady=5
+        self.result_label = ttk.Label(
+            self.root, textvariable=self.display_var, font=("Arial", 24), anchor="e"
         )
+        self.result_label.grid(row=0, column=0, columnspan=4, sticky="we", pady=10)
 
-        self.result_label = ttk.Label(self.root, text="", font=('Arial', 16))
-        self.result_label.grid(row=3, column=0, columnspan=4, pady=10)
+        buttons = [
+            ('7', self.on_digit), ('8', self.on_digit), ('9', self.on_digit), ('+', self.on_operation),
+            ('4', self.on_digit), ('5', self.on_digit), ('6', self.on_digit), ('-', self.on_operation),
+            ('1', self.on_digit), ('2', self.on_digit), ('3', self.on_digit), ('*', self.on_operation),
+            ('C', self.on_clear), ('0', self.on_digit), ('=', self.on_equal), ('/', self.on_operation),
+        ]
 
-    def on_calculate(self):
-        try:
-            a = float(self.entry_a.get())
-            b = float(self.entry_b.get())
-            result = calculate(self.op_var.get(), a, b)
-            self._show_result(result)
-        except Exception as exc:  # pragma: no cover - gui validation
-            self._show_result(f"Error: {exc}")
+        for i in range(4):
+            self.root.grid_columnconfigure(i, weight=1)
+
+        for idx, (text, handler) in enumerate(buttons):
+            row = idx // 4 + 1
+            col = idx % 4
+            ttk.Button(
+                self.root, text=text, command=lambda t=text: handler(t)
+            ).grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
+
+    def on_digit(self, char):
+        self.current += char
+        self.display_var.set(self.current)
+
+    def on_operation(self, op_char):
+        if self.current:
+            self.first_operand = float(self.current)
+            self.operation = {"+": "add", "-": "sub", "*": "mul", "/": "div"}[op_char]
+            self.current = ""
+
+    def on_equal(self, _):
+        if self.current and self.operation:
+            try:
+                second = float(self.current)
+                result = calculate(self.operation, self.first_operand, second)
+                self._show_result(result)
+                self.current = str(result)
+                self.first_operand = None
+                self.operation = None
+            except Exception as exc:  # pragma: no cover - gui validation
+                self._show_result(f"Error: {exc}")
+
+    def on_clear(self, _):
+        self.current = ""
+        self.first_operand = None
+        self.operation = None
+        self.display_var.set("0")
 
     def _show_result(self, text):
-        self.result_label.configure(text=str(text), foreground='#CCCCCC')
+        self.display_var.set(str(text))
+        self.result_label.configure(foreground="#CCCCCC")
         self._animate_result(0)
 
     def _animate_result(self, step):
